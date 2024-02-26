@@ -14,7 +14,7 @@ func JWTMiddleware(next http.Handler) http.Handler {
 		c, err := r.Cookie("token")
 		if err != nil {
 			if err == http.ErrNoCookie {
-				response := map[string]interface{}{ "message": "Unauthorized, Harap Login Terlebih Dahulu!", "status": false}
+				response := map[string]interface{}{"message": "Unauthorized, Harap Login Terlebih Dahulu!", "status": false}
 				helper.ResponseJSON(w, http.StatusUnauthorized, response)
 				return
 			}

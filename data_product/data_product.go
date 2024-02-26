@@ -25,6 +25,6 @@ func Data(w http.ResponseWriter, r *http.Request) {
 			"stok":         500,
 		},
 	}
-	
+
 	helper.ResponseJSON(w, http.StatusOK, data)
 }
