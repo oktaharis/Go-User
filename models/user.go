@@ -5,14 +5,14 @@ package models
 import (
 	"time"
 
-	uuid "github.com/jackc/pgx/pgtype/ext/satori-uuid"
+	// uuid "github.com/jackc/pgx/pgtype/ext/satori-uuid"
 	"gorm.io/gorm"
 )
 
 // User adalah model untuk tabel User
 type User struct {
 	gorm.Model
-	UID             uuid.UUID `gorm:"type:uuid;default:public.uuid_generate_v4()" json:"uid"`
+	// UID             uuid.UUID `gorm:"type:uuid;default:public.uuid_generate_v4()" json:"uid"`
 	Name            string    `gorm:"varchar(255)" json:"name"`
 	Email           string    `gorm:"varchar(255)" json:"email"`
 	EmailVerifiedAt time.Time `gorm:"timestamp" json:"email_verified_at"`

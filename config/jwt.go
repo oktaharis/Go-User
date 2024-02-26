@@ -2,16 +2,15 @@ package config
 
 import (
 	"github.com/golang-jwt/jwt/v4"
-	_"github.com/golang-jwt/jwt/v5"
-
+	_ "github.com/golang-jwt/jwt/v5"
 )
-
 
 var JWT_KEY = []byte("asdfghjklsadasfassad12")
 
 type JWTClaim struct {
-	Email string
-	Role string
+	Email   string
+	Role    string
 	Product string
+	Name    string
 	jwt.RegisteredClaims
 }
