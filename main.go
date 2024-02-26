@@ -36,6 +36,8 @@ func main() {
 	role.HandleFunc("/data", rolescontroller.GetRole).Methods("GET")
 	role.HandleFunc("/edit", rolescontroller.UpdateRole).Methods("PUT")
 	role.HandleFunc("/delete", rolescontroller.DeleteRole).Methods("DELETE")
+	// role.Use(middlewares.SuperAdminMiddleware)
+
 
 	// Route untuk Product
 	product := r.PathPrefix("/product").Subrouter()
