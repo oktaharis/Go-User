@@ -9,5 +9,7 @@ import (
 type UsersProduct struct {
 	gorm.Model
 	UserID    string    `gorm:"type:varchar(32);primaryKey;column:id" json:"user_id"` // Kolom UserID sebagai kunci asing
-	ProductID uuid.UUID `gorm:"type:uuid" json:"product_id"`                          // Kolom ProductID sebagai kunci as
+	Name      User      `gorm:"foreignKey:UserID" json:"name"`
+	ProductID uuid.UUID `gorm:"type:uuid" json:"product_id"`
+	Product   Product   `gorm:"foreignKey:ProductID" json:"product"` // Kolom ProductID sebagai kunci as
 }
