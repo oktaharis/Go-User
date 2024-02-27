@@ -1,15 +1,26 @@
 package models
 
 import (
-	uuid "github.com/jackc/pgx/pgtype/ext/satori-uuid"
+	"time"
+
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
-// UsersRole adalah model untuk tabel UsersRole
 type UsersRole struct {
-	gorm.Model
-	UserID string    `gorm:"type:varchar(32);primaryKey;column:id" json:"user_id"`
-	Name   User      `gorm:"foreignKey:UserID" json:"name"`
-	RoleID uuid.UUID `gorm:"type:uuid" json:"role_id"`
-	Role   Role      `gorm:"foreignKey:RoleID" json:"role"`
+	ID        string `gorm:"type:char(36);primaryKey;" json:"id"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	UserID    int  `gorm:"int" json:"user_id"` // Kolom UserID sebagai kunci asing
+	Name      User `gorm:"foreignKey:UserID" json:"name"`
+	RoleID    uint `gorm:"int" json:"role_id"`            // Kunci asing untuk Role
+	Role      Role `gorm:"foreignKey:RoleID" json:"Role"` // Kolom RoleID sebagai kunci as
 }
+
+// BeforeCreate untuk menghasilkan UUID baru sebelum membuat entitas baru.
+func (up *UsersRole) BeforeCreate(tx *gorm.DB) (err error) {
+	uid := uuid.New()
+	up.ID = uid.String()
+	return nil
+}
+

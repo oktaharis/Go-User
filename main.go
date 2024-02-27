@@ -8,6 +8,7 @@ import (
 	"github.com/jeypc/go-jwt-mux/controllers/authcontroller"
 	"github.com/jeypc/go-jwt-mux/controllers/productcontroller"
 	"github.com/jeypc/go-jwt-mux/controllers/rolescontroller"
+	"github.com/jeypc/go-jwt-mux/controllers/users_productcontroller"
 	"github.com/jeypc/go-jwt-mux/data_product"
 	"github.com/jeypc/go-jwt-mux/middlewares"
 	"github.com/jeypc/go-jwt-mux/models"
@@ -43,6 +44,12 @@ func main() {
 	product.HandleFunc("/data", productcontroller.GetProduct).Methods("GET")
 	product.HandleFunc("/edit", productcontroller.UpdateProduct).Methods("PUT")
 	product.HandleFunc("/delete", productcontroller.DeleteProduct).Methods("DELETE")
+
+	// rute untuk userProduct
+	userProduct := r.PathPrefix("/userProduct").Subrouter()
+	userProduct.HandleFunc("/create", usersproductcontroller.CreateUserProduct).Methods("POST")
+	userProduct.HandleFunc("/data", usersproductcontroller.ReadUserProduct).Methods("GET")
+
 
 	r.HandleFunc("/verify-otp", authcontroller.VerifyOTP).Methods("POST")
 
