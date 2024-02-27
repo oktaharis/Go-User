@@ -29,6 +29,7 @@ func CreateProduct(w http.ResponseWriter, r *http.Request){
 		response := map[string]string{"message": "success"}
 		helper.ResponseJSON(w, http.StatusOK, response)
 }
+
 func GetProduct(w http.ResponseWriter, r *http.Request) {
 		// Mendapatkan parameter id dari query parameter
 		idParam := r.URL.Query().Get("id")

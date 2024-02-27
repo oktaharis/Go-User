@@ -1,13 +1,16 @@
 package models
 
 import (
-	uuid "github.com/jackc/pgx/pgtype/ext/satori-uuid"
-	"gorm.io/gorm"
+    "gorm.io/gorm"
+    "github.com/google/uuid"
 )
 
 // UsersRole adalah model untuk tabel UsersRole
 type UsersRole struct {
-	gorm.Model
-	UserID  string    `gorm:"type:varchar(32);primaryKey;column:id" json:"user_id"`
-	RoleID  uuid.UUID `gorm:"type:uuid" json:"role_id"`
+    gorm.Model
+    User_ID   string    `gorm:"type:varchar(32);primaryKey" json:"user_id"`
+    User_Name string    `gorm:"type:varchar(255)" json:"user_name"`
+    User_Code string    `gorm:"type:varchar(50)" json:"user_code"`
+    Role_ID   uuid.UUID `gorm:"type:uuid" json:"role_id"`
+    Role_Name string    `gorm:"type:varchar(200)" json:"role_name"`
 }
