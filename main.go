@@ -48,4 +48,4 @@ func main() {
 	r.HandleFunc("/verify-otp", authcontroller.VerifyOTP).Methods("POST")
 
 	log.Fatal(http.ListenAndServe(":8080", r))
-}
+} 
