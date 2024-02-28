@@ -8,7 +8,8 @@ import (
 	"github.com/jeypc/go-jwt-mux/controllers/authcontroller"
 	"github.com/jeypc/go-jwt-mux/controllers/productcontroller"
 	"github.com/jeypc/go-jwt-mux/controllers/rolescontroller"
-	"github.com/jeypc/go-jwt-mux/controllers/users_productcontroller"
+	usersproductcontroller "github.com/jeypc/go-jwt-mux/controllers/users_productcontroller"
+	usersrolecontroller "github.com/jeypc/go-jwt-mux/controllers/users_rolecontroller"
 	"github.com/jeypc/go-jwt-mux/data_product"
 	"github.com/jeypc/go-jwt-mux/middlewares"
 	"github.com/jeypc/go-jwt-mux/models"
@@ -49,7 +50,15 @@ func main() {
 	userProduct := r.PathPrefix("/userProduct").Subrouter()
 	userProduct.HandleFunc("/create", usersproductcontroller.CreateUserProduct).Methods("POST")
 	userProduct.HandleFunc("/data", usersproductcontroller.ReadUserProduct).Methods("GET")
+	userProduct.HandleFunc("/edit", usersproductcontroller.UpdateUserProduct).Methods("PUT")
+	userProduct.HandleFunc("/delete", usersproductcontroller.DeleteUserProduct).Methods("DELETE")
 
+	// rute untuk userProduct
+	userRole := r.PathPrefix("/userRole").Subrouter()
+	userRole.HandleFunc("/create", usersrolecontroller.CreateUserRole).Methods("POST")
+	userRole.HandleFunc("/data", usersrolecontroller.ReaduserRole).Methods("GET")
+	userRole.HandleFunc("/edit", usersrolecontroller.UpdateUserRole).Methods("PUT")
+	userRole.HandleFunc("/delete", usersrolecontroller.DeleteuserRole).Methods("DELETE")
 
 	r.HandleFunc("/verify-otp", authcontroller.VerifyOTP).Methods("POST")
 

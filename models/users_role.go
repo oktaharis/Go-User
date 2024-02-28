@@ -11,16 +11,15 @@ type UsersRole struct {
 	ID        string `gorm:"type:char(36);primaryKey;" json:"id"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	UserID    int  `gorm:"int" json:"user_id"` // Kolom UserID sebagai kunci asing
-	Name      User `gorm:"foreignKey:UserID" json:"name"`
-	RoleID    uint `gorm:"int" json:"role_id"`            // Kunci asing untuk Role
-	Role      Role `gorm:"foreignKey:RoleID" json:"Role"` // Kolom RoleID sebagai kunci as
+	UserID    uint `gorm:"int" json:"user_id"`            // Kolom UserID sebagai kunci asing
+	User      User `gorm:"foreignKey:UserID" json:"user"` // Kolom UserID sebagai kunci asing
+	RoleID    uint `gorm:"int" json:"role_id"`            // Kunci asing untuk Product
+	Role      Role `gorm:"foreignKey:RoleID" json:"role"` // Kolom RoleID sebagai kunci as
 }
 
-// BeforeCreate untuk menghasilkan UUID baru sebelum membuat entitas baru.
+// BeforeCreate will set a UUID rather than numeric ID.
 func (up *UsersRole) BeforeCreate(tx *gorm.DB) (err error) {
 	uid := uuid.New()
 	up.ID = uid.String()
 	return nil
 }
-
