@@ -67,7 +67,6 @@ func GetRole(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-
 func UpdateRole(w http.ResponseWriter, r *http.Request) {
 	// Mendapatkan parameter id dari query parameter
 	idParam := r.URL.Query().Get("id")

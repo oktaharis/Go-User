@@ -1,13 +1,25 @@
 package models
 
 import (
-	uuid "github.com/jackc/pgx/pgtype/ext/satori-uuid"
+	"time"
+
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
-// UsersProduct adalah model untuk tabel UsersProduct
 type UsersProduct struct {
-	gorm.Model
-	UserID    string    `gorm:"type:varchar(32);primaryKey;column:id" json:"user_id"` // Kolom UserID sebagai kunci asing
-	ProductID uuid.UUID `gorm:"type:uuid" json:"product_id"`                          // Kolom ProductID sebagai kunci as
+	ID        string `gorm:"type:char(36);primaryKey;" json:"id"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	UserID    uint    `gorm:"int" json:"user_id"`                  // Kolom UserID sebagai kunci asing
+	User      User    `gorm:"foreignKey:UserID" json:"user"`       // Kolom UserID sebagai kunci asing
+	ProductID uint    `gorm:"int" json:"product_id"`               // Kunci asing untuk Product
+	Product   Product `gorm:"foreignKey:ProductID" json:"product"` // Kolom ProductID sebagai kunci as
+}
+
+// BeforeCreate will set a UUID rather than numeric ID.
+func (up *UsersProduct) BeforeCreate(tx *gorm.DB) (err error) {
+	uid := uuid.New()
+	up.ID = uid.String()
+	return nil
 }

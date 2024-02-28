@@ -1,25 +1,25 @@
 package email
 
 import (
-	"net/smtp"
 	"fmt"
+	"net/smtp"
 )
 
 // EmailSender adalah sebuah struct yang merepresentasikan pengirim email.
 type EmailSender struct {
-	SMTPServer   string
-	SMTPPort     string
-	SenderEmail  string
-	Password     string
+	SMTPServer  string
+	SMTPPort    string
+	SenderEmail string
+	Password    string
 }
 
 // NewEmailSender membuat sebuah instance EmailSender baru.
 func NewEmailSender(smtpServer, smtpPort, senderEmail, password string) *EmailSender {
 	return &EmailSender{
-		SMTPServer:   smtpServer,
-		SMTPPort:     smtpPort,
-		SenderEmail:  senderEmail,
-		Password:     password,
+		SMTPServer:  smtpServer,
+		SMTPPort:    smtpPort,
+		SenderEmail: senderEmail,
+		Password:    password,
 	}
 }
 

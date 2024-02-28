@@ -2,7 +2,6 @@ package models
 
 import (
 	"time"
-
 )
 
 // Product adalah model untuk tabel Product

@@ -20,6 +20,7 @@ import (
 	"github.com/jeypc/go-jwt-mux/models"
 	"golang.org/x/crypto/bcrypt"
 )
+
 // func sendOTPByEmail(toEmail, otp string) error {
 //     from := mail.NewEmail("Okta Haris Sutanto", "oktaharis2008@gmail.com")
 //     subject := "Kode OTP untuk Verifikasi"
@@ -41,6 +42,7 @@ import (
 //     return nil
 // }
 
+// Update fungsi Login untuk menggunakan GenerateJWT
 func Login(w http.ResponseWriter, r *http.Request) {
 	var userInput models.User
 	decoder := json.NewDecoder(r.Body)
@@ -70,18 +72,21 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	generatedOTP := generateOTP()
-	user.OTP = generatedOTP
-	models.DB.Save(&user)
-	  // Kirim email OTP menggunakan SendGrid
-	//   if err := sendOTPByEmail(userInput.Email, generatedOTP); err != nil {
-    //     http.Error(w, "Gagal mengirimkan email OTP", http.StatusInternalServerError)
-    //     return
-    // }
+	// Generate OTP
+	otp := generateOTP()
 
+	// Simpan OTP ke dalam database
+	user.OTP = otp
+	if err := models.DB.Save(&user).Error; err != nil {
+		response := map[string]string{"status": "failed", "message": "Gagal menyimpan OTP"}
+		helper.ResponseJSON(w, http.StatusInternalServerError, response)
+		return
+	}
+
+	// Response ke pengguna bahwa OTP berhasil dibuat
 	response := map[string]interface{}{
 		"status":  "success",
-		"message": "Login berhasil",
+		"message": "OTP berhasil dibuat",
 	}
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
@@ -93,7 +98,7 @@ func generateOTP() string {
 	for i := range otp {
 		randomIndex, err := rand.Int(rand.Reader, big.NewInt(int64(len(letterBytes))))
 		if err != nil {
-			// Handle the error, for gmail, log it or return a default value
+			// Handle the error, for example, log it or return a default value
 			return "000000"
 		}
 		otp[i] = letterBytes[randomIndex.Int64()]
@@ -132,7 +137,7 @@ func VerifyOTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	
+
 	// Validasi OTP
 	if inputOTP.OTP != user.OTP {
 		response := map[string]string{"status": "failed", "message": "Kode OTP tidak sesuai"}
@@ -140,20 +145,8 @@ func VerifyOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Jika OTP valid, buat token JWT
-	// Proses pembuatan token jwt
-	expTime := time.Now().Add(time.Minute * 1)
-	claims := &config.JWTClaim{
-		Email: user.Email,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    "go-jwt-mux",
-			ExpiresAt: jwt.NewNumericDate(expTime),
-		},
-	}
-	// Medeklarasikan algoritma yang akan digunakan untuk signing
-	tokenAlgo := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	// Signed token
-	token, err := tokenAlgo.SignedString(config.JWT_KEY)
+	// Jika OTP valid, buat token JWT menggunakan GenerateJWT
+	token, err := GenerateJWT(user)
 	if err != nil {
 		response := map[string]string{"status": "failed", "message": err.Error()}
 		helper.ResponseJSON(w, http.StatusInternalServerError, response)
@@ -170,6 +163,7 @@ func VerifyOTP(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 	})
 
+	// Response JSON dengan token JWT
 	response := map[string]interface{}{
 		"status":  "success",
 		"message": "Login berhasil",
@@ -178,8 +172,39 @@ func VerifyOTP(w http.ResponseWriter, r *http.Request) {
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
 
-// handlers/user_handler.go
+// Buat fungsi baru untuk membuat token JWT
+func GenerateJWT(user models.User) (string, error) {
+	// Memuat informasi peran dan nama pengguna dari database
+	var role models.Role
+	if err := models.DB.First(&role, user.RoleID).Error; err != nil {
+		return "", err
+	}
 
+	// Set nilai Role dan Name dari pengguna sesuai dengan data dari database
+	userRole := role.Name
+	userName := user.Name
+
+	// Buat token JWT
+	expTime := time.Now().Add(time.Minute * 1)
+	claims := &config.JWTClaim{
+		Email: user.Email,
+		Role:  userRole,
+		Name:  userName,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "go-jwt-mux",
+			ExpiresAt: jwt.NewNumericDate(expTime),
+		},
+	}
+
+	// Buat token JWT
+	tokenAlgo := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token, err := tokenAlgo.SignedString(config.JWT_KEY)
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
+}
 
 func ReadUser(w http.ResponseWriter, r *http.Request) {
 	// Mendapatkan parameter id dari query parameter
