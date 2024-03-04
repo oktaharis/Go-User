@@ -10,7 +10,10 @@ require (
 	gorm.io/gorm v1.25.6
 )
 
-require github.com/stretchr/testify v1.8.3 // indirect
+require (
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/satori/go.uuid v1.2.0 // indirect
+)
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.2.0

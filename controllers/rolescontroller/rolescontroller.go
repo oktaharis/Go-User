@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gorilla/mux"
 	"github.com/jeypc/go-jwt-mux/helper"
 	"github.com/jeypc/go-jwt-mux/models"
 )
@@ -13,7 +14,7 @@ func CreateRole(w http.ResponseWriter, r *http.Request) {
 	var roleInput models.Role
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&roleInput); err != nil {
-		response := map[string]string{"message": err.Error()}
+		response := map[string]interface{}{"message": err.Error(), "status": false}
 		helper.ResponseJSON(w, http.StatusBadRequest, response)
 		return
 	}
@@ -21,14 +22,20 @@ func CreateRole(w http.ResponseWriter, r *http.Request) {
 
 	// INSERT KE DATABASE
 	if err := models.DB.Create(&roleInput).Error; err != nil {
-		response := map[string]string{"message": err.Error()}
+		response := map[string]interface{}{"message": err.Error(), "status": false}
 		helper.ResponseJSON(w, http.StatusBadRequest, response)
 		return
 	}
 
-	response := map[string]string{"message": "success"}
+	data := []models.Role{roleInput}
+	response := map[string]interface{}{
+		"message": "success",
+		"status":  true,
+		"data":    data,
+	}
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
+
 func GetRole(w http.ResponseWriter, r *http.Request) {
 	// Mendapatkan parameter id dari query parameter
 	idParam := r.URL.Query().Get("id")
@@ -38,7 +45,7 @@ func GetRole(w http.ResponseWriter, r *http.Request) {
 		// Konversi idParam menjadi tipe data yang sesuai (misalnya, integer)
 		id, err := strconv.Atoi(idParam)
 		if err != nil {
-			response := map[string]string{"message": "ID tidak valid"}
+			response := map[string]interface{}{"message": "Failed, ID tidak valid", "status": false}
 			helper.ResponseJSON(w, http.StatusBadRequest, response)
 			return
 		}
@@ -46,7 +53,7 @@ func GetRole(w http.ResponseWriter, r *http.Request) {
 		// Mendapatkan data role berdasarkan ID
 		var role models.Role
 		if err := models.DB.First(&role, id).Error; err != nil {
-			response := map[string]string{"message": err.Error()}
+			response := map[string]interface{}{"message": err.Error(), "status": false}
 			helper.ResponseJSON(w, http.StatusInternalServerError, response)
 			return
 		}
@@ -57,7 +64,7 @@ func GetRole(w http.ResponseWriter, r *http.Request) {
 		// Jika idParam kosong, artinya kita ingin mengambil seluruh data roles
 		var roles []models.Role
 		if err := models.DB.Find(&roles).Error; err != nil {
-			response := map[string]string{"message": err.Error()}
+			response := map[string]interface{}{"message": err.Error(), "status": false}
 			helper.ResponseJSON(w, http.StatusInternalServerError, response)
 			return
 		}
@@ -67,57 +74,83 @@ func GetRole(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func UpdateRole(w http.ResponseWriter, r *http.Request) {
-	// Mendapatkan parameter id dari query parameter
-	idParam := r.URL.Query().Get("id")
 
-	// Konversi idParam menjadi tipe data yang sesuai (misalnya, integer)
-	id, err := strconv.Atoi(idParam)
-	if err != nil {
-		response := map[string]string{"message": "ID tidak valid"}
+func UpdateRole(w http.ResponseWriter, r *http.Request) {
+	// Mendapatkan parameter id dari bagian path URL
+	params := mux.Vars(r)
+	idParam, ok := params["id"]
+	if !ok {
+		response := map[string]interface{}{"message": "Failed, ID tidak ditemukan dalam path URL", "status": false}
 		helper.ResponseJSON(w, http.StatusBadRequest, response)
 		return
 	}
 
-	// Mendapatkan data role yang akan diupdate
-	var roleInput models.Role
+	// Konversi idParam menjadi tipe data yang sesuai (misalnya, integer)
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		response := map[string]interface{}{"message": "Failed, ID tidak valid", "status": false}
+		helper.ResponseJSON(w, http.StatusBadRequest, response)
+		return
+	}
+
+	// Mendapatkan data Role yang akan diupdate
+	var RoleInput models.Role
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&roleInput); err != nil {
-		response := map[string]string{"message": err.Error()}
+	if err := decoder.Decode(&RoleInput); err != nil {
+		response := map[string]interface{}{"message": err.Error(), "status": false}
 		helper.ResponseJSON(w, http.StatusBadRequest, response)
 		return
 	}
 	defer r.Body.Close()
+
+	// Cek apakah data Role dengan ID tersebut ada
+	var existingRole models.Role
+	if err := models.DB.First(&existingRole, id).Error; err != nil {
+		response := map[string]interface{}{"message": "Failed, ID tidak ditemukan", "status": false}
+		helper.ResponseJSON(w, http.StatusBadRequest, response)
+		return
+	}
+
 	// Update data Role berdasarkan ID
-	if err := models.DB.Model(&models.Role{}).Where("id = ?", id).Updates(&roleInput).Error; err != nil {
-		response := map[string]string{"message": err.Error()}
+	if err := models.DB.Model(&models.Role{}).Where("id = ?", id).Updates(&RoleInput).Error; err != nil {
+		response := map[string]interface{}{"message": err.Error(), "status": false}
 		helper.ResponseJSON(w, http.StatusInternalServerError, response)
 		return
 	}
 
-	response := map[string]string{"message": "Role berhasil diupdate"}
+	response := map[string]interface{}{"message": "Role berhasil diupdate", "status": true}
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
 
+
 func DeleteRole(w http.ResponseWriter, r *http.Request) {
-	// Mendapatkan parameter id dari query parameter
-	idParam := r.URL.Query().Get("id")
+	// Mengambil ID dari path variabel
+	vars := mux.Vars(r)
+	idParam := vars["id"]
 
 	// Konversi idParam menjadi tipe data yang sesuai (misalnya, integer)
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		response := map[string]string{"message": "ID tidak valid"}
+		response := map[string]interface{}{"message": "ID tidak valid", "status": false}
+		helper.ResponseJSON(w, http.StatusBadRequest, response)
+		return
+	}
+
+	// Cek apakah data Role dengan ID tersebut ada
+	var existingRole models.Role
+	if err := models.DB.First(&existingRole, id).Error; err != nil {
+		response := map[string]interface{}{"message": "Failed, ID tidak ditemukan", "status": false}
 		helper.ResponseJSON(w, http.StatusBadRequest, response)
 		return
 	}
 
 	// Proses penghapusan Role dari database berdasarkan id
 	if err := models.DB.Where("id = ?", id).Delete(&models.Role{}).Error; err != nil {
-		response := map[string]string{"message": err.Error()}
+		response := map[string]interface{}{"message": err.Error(), "status": false}
 		helper.ResponseJSON(w, http.StatusInternalServerError, response)
 		return
 	}
 
-	response := map[string]string{"message": "Role berhasil dihapus"}
+	response := map[string]interface{}{"message": "Role berhasil dihapus", "status": true}
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
