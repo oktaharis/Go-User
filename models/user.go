@@ -4,11 +4,11 @@ package models
 
 import (
 	"time"
-	// uuid "github.com/jackc/pgx/pgtype/ext/satori-uuid"
 )
 
 type User struct {
-	ID              uint `gorm:"primaryKey" json:"id"`
+	ID              uint      `gorm:"primaryKey" json:"id"`
+	UID             string 	  `sql:"type:uuid;primary_key;default:uuid_generate_v4()"`
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Name            string    `gorm:"varchar(255)" json:"name"`
