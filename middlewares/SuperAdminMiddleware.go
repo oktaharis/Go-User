@@ -5,15 +5,17 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/jeypc/go-jwt-mux/config"
+	"github.com/jeypc/go-jwt-mux/helper"
 )
 
-func RoleAuthorizationMiddleware(next http.Handler) http.Handler {
+func  RoleAuthorizationMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Ambil informasi token dari cookie
 		cookie, err := r.Cookie("token")
 		if err != nil {
 			// Jika tidak ada cookie "token" yang ditemukan, maka pengguna tidak terotentikasi
-			http.Error(w, "Unauthorized: No token found", http.StatusUnauthorized)
+			response := map[string]interface{}{"message": "Unauthorized, cookie tidak di temukan! ", "status": false}
+			helper.ResponseJSON(w, http.StatusUnauthorized, response)
 			return
 		}
 
@@ -24,14 +26,16 @@ func RoleAuthorizationMiddleware(next http.Handler) http.Handler {
 		})
 		if err != nil {
 			// Jika terjadi kesalahan dalam parsing token, pengguna tidak terotentikasi
-			http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
+			response := map[string]interface{}{"message": "Unauthorized, Pengguna tidak terotentikasi!", "status": false}
+			helper.ResponseJSON(w, http.StatusUnauthorized, response)
 			return
 		}
 
 		// Verifikasi token JWT
 		if !token.Valid {
 			// Jika token tidak valid, pengguna tidak terotentikasi
-			http.Error(w, "Unauthorized: Token is not valid", http.StatusUnauthorized)
+			response := map[string]interface{}{"message": "Unauthorized, Token tidak valid!", "status": false}
+			helper.ResponseJSON(w, http.StatusUnauthorized, response)
 			return
 		}
 
@@ -39,7 +43,8 @@ func RoleAuthorizationMiddleware(next http.Handler) http.Handler {
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
 			// Jika tidak dapat membaca klaim dari token, pengguna tidak terotentikasi
-			http.Error(w, "Unauthorized: Unable to read token claims", http.StatusUnauthorized)
+			response := map[string]interface{}{"message": "Unauthorized, tidak dapat membaca klaim dari token!", "status": false}
+			helper.ResponseJSON(w, http.StatusUnauthorized, response)
 			return
 		}
 
@@ -47,13 +52,15 @@ func RoleAuthorizationMiddleware(next http.Handler) http.Handler {
 		role, ok := claims["Role"].(string)
 		if !ok {
 			// Jika tidak dapat membaca peran dari klaim, pengguna tidak terotentikasi
-			http.Error(w, "Unauthorized: Role kosong", http.StatusUnauthorized)
+			response := map[string]interface{}{"message": "Unauthorized, Role Kosong!", "status": false}
+			helper.ResponseJSON(w, http.StatusUnauthorized, response)
 			return
 		}
 
 		// Jika peran bukan Super Admin, tolak akses
 		if role != "Super Admin" {
-			http.Error(w, "Forbidden: Only Super Admin can perform this operation", http.StatusForbidden)
+			response := map[string]interface{}{"message": "Unauthorized, Only Super Admin can perform this operation!", "status": false}
+			helper.ResponseJSON(w, http.StatusUnauthorized, response)
 			return
 		}
 

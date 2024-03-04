@@ -24,7 +24,7 @@ func main() {
 	r.HandleFunc("/register", authcontroller.Register).Methods("POST")
 	r.HandleFunc("/read/user", authcontroller.ReadUser).Methods("GET")
 	r.HandleFunc("/logout", authcontroller.Logout).Methods("GET")
-	r.HandleFunc("/delete/user", authcontroller.DeleteUser).Methods("DELETE")
+	r.HandleFunc("/delete/{id}", authcontroller.DeleteUser).Methods("DELETE")
 	r.HandleFunc("/users", authcontroller.UpdateUser).Methods("PUT").Queries("id", "{id}")
 
 	api := r.PathPrefix("/api").Subrouter()
@@ -35,30 +35,31 @@ func main() {
 	role := r.PathPrefix("/roles").Subrouter()
 	role.HandleFunc("/create", rolescontroller.CreateRole).Methods("POST")
 	role.HandleFunc("/data", rolescontroller.GetRole).Methods("GET")
-	role.HandleFunc("/edit", rolescontroller.UpdateRole).Methods("PUT")
-	role.HandleFunc("/delete", rolescontroller.DeleteRole).Methods("DELETE")
-	role.Use(middlewares.RoleAuthorizationMiddleware)
+	role.HandleFunc("/edit/{id}", rolescontroller.UpdateRole).Methods("PUT")
+	role.HandleFunc("/delete/{id}", rolescontroller.DeleteRole).Methods("DELETE")
+	// role.Use(middlewares.RoleAuthorizationMiddleware)
 
 	// Route untuk Product
 	product := r.PathPrefix("/product").Subrouter()
 	product.HandleFunc("/create", productcontroller.CreateProduct).Methods("POST")
 	product.HandleFunc("/data", productcontroller.GetProduct).Methods("GET")
-	product.HandleFunc("/edit", productcontroller.UpdateProduct).Methods("PUT")
-	product.HandleFunc("/delete", productcontroller.DeleteProduct).Methods("DELETE")
+	product.HandleFunc("/edit/{id}", productcontroller.UpdateProduct).Methods("PUT")
+	product.HandleFunc("/delete/{id}", productcontroller.DeleteProduct).Methods("DELETE")
+	// product.Use(middlewares.RoleAuthorizationMiddleware)
 
 	// rute untuk userProduct
 	userProduct := r.PathPrefix("/userProduct").Subrouter()
 	userProduct.HandleFunc("/create", usersproductcontroller.CreateUserProduct).Methods("POST")
 	userProduct.HandleFunc("/data", usersproductcontroller.ReadUserProduct).Methods("GET")
-	userProduct.HandleFunc("/edit", usersproductcontroller.UpdateUserProduct).Methods("PUT")
-	userProduct.HandleFunc("/delete", usersproductcontroller.DeleteUserProduct).Methods("DELETE")
+	userProduct.HandleFunc("/edit/{uid}", usersproductcontroller.UpdateUserProduct).Methods("PUT")
+	userProduct.HandleFunc("/delete/{uid}", usersproductcontroller.DeleteUserProduct).Methods("DELETE")
 
 	// rute untuk userProduct
 	userRole := r.PathPrefix("/userRole").Subrouter()
 	userRole.HandleFunc("/create", usersrolecontroller.CreateUserRole).Methods("POST")
 	userRole.HandleFunc("/data", usersrolecontroller.ReaduserRole).Methods("GET")
-	userRole.HandleFunc("/edit", usersrolecontroller.UpdateUserRole).Methods("PUT")
-	userRole.HandleFunc("/delete", usersrolecontroller.DeleteuserRole).Methods("DELETE")
+	userRole.HandleFunc("/edit/{uid}", usersrolecontroller.UpdateUserRole).Methods("PUT")
+	userRole.HandleFunc("/delete/{uid}", usersrolecontroller.DeleteuserRole).Methods("DELETE")
 
 	r.HandleFunc("/verify-otp", authcontroller.VerifyOTP).Methods("POST")
 

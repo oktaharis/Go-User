@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/jeypc/go-jwt-mux/config"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -280,8 +281,11 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		helper.ResponseJSON(w, http.StatusBadRequest, response)
 		return
 	}
-
-	response := map[string]string{"message": "success"}
+	data := []models.User{userInput}
+	response := map[string]interface{}{
+		"message": "success",
+		"status" :  true,
+		"data"	 :  data}
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
 func Logout(w http.ResponseWriter, r *http.Request) { // perubahan logout menjadi Logout
@@ -341,8 +345,9 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
-	// Mendapatkan parameter id dari query parameter
-	idParam := r.URL.Query().Get("id")
+	// Mengambil ID dari path variabel
+	vars := mux.Vars(r)
+	idParam := vars["id"]
 
 	// Konversi idParam menjadi tipe data yang sesuai (misalnya, integer)
 	id, err := strconv.Atoi(idParam)
@@ -352,7 +357,15 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Proses penghapusan user dari database berdasarkan id
+	// Cek apakah data User dengan ID tersebut ada
+	var existingUser models.User
+	if err := models.DB.First(&existingUser, id).Error; err != nil {
+		response := map[string]string{"message": "Failed, ID tidak ditemukan"}
+		helper.ResponseJSON(w, http.StatusBadRequest, response)
+		return
+	}
+
+	// Proses penghapusan User dari database berdasarkan id
 	if err := models.DB.Where("id = ?", id).Delete(&models.User{}).Error; err != nil {
 		response := map[string]string{"message": err.Error()}
 		helper.ResponseJSON(w, http.StatusInternalServerError, response)
@@ -362,3 +375,4 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	response := map[string]string{"message": "User berhasil dihapus"}
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
+

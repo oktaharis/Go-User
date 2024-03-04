@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	github.com/jinzhu/gorm v1.9.16 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 )

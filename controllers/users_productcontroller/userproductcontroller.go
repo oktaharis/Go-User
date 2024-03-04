@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/jeypc/go-jwt-mux/helper"
 	"github.com/jeypc/go-jwt-mux/models"
 	"github.com/pkg/errors"
@@ -16,7 +17,7 @@ func CreateUserProduct(w http.ResponseWriter, r *http.Request) {
 	var UproductInput models.UsersProduct
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&UproductInput); err != nil {
-		response := map[string]string{"message": err.Error()}
+		response := map[string]interface{}{"message": err.Error(), "status": false}
 		helper.ResponseJSON(w, http.StatusBadRequest, response)
 		return
 	}
@@ -24,12 +25,15 @@ func CreateUserProduct(w http.ResponseWriter, r *http.Request) {
 
 	// INSERT KE DATABASE
 	if err := models.DB.Create(&UproductInput).Error; err != nil {
-		response := map[string]string{"message": err.Error()}
+		response := map[string]interface{}{"message": err.Error(), "status": false}
 		helper.ResponseJSON(w, http.StatusBadRequest, response)
 		return
 	}
-
-	response := map[string]string{"message": "success"}
+	data := []models.UsersProduct{UproductInput}
+	response := map[string]interface{}{
+		"message": "success",
+		"status" :  true,
+		"data"	 :  data}
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
 func ReadUserProduct(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +44,7 @@ func ReadUserProduct(w http.ResponseWriter, r *http.Request) {
 		// Konversi idParam menjadi tipe data yang sesuai (misalnya, integer)
 		id, err := strconv.Atoi(idParam)
 		if err != nil {
-			response := map[string]string{"message": "ID tidak valid"}
+			response := map[string]interface{}{"message": "ID tidak valid"}
 			helper.ResponseJSON(w, http.StatusBadRequest, response)
 			return
 		}
@@ -51,11 +55,11 @@ func ReadUserProduct(w http.ResponseWriter, r *http.Request) {
 			return db.Select("id, name, email")
 		}).Preload("Product").First(&userProduct, id).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
-				response := map[string]string{"message": "User tidak ditemukan"}
+				response := map[string]interface{}{"message": "User tidak ditemukan", "status": false}
 				helper.ResponseJSON(w, http.StatusNotFound, response)
 				return
 			}
-			response := map[string]string{"message": err.Error()}
+			response := map[string]interface{}{"message": err.Error(), "status": false}
 			helper.ResponseJSON(w, http.StatusInternalServerError, response)
 			return
 		}
@@ -68,7 +72,7 @@ func ReadUserProduct(w http.ResponseWriter, r *http.Request) {
 		if err := models.DB.Preload("User", func(db *gorm.DB) *gorm.DB {
 			return db.Select("id, name, email")
 		}).Preload("Product").Find(&userProducts).Error; err != nil {
-			response := map[string]string{"message": err.Error()}
+			response := map[string]interface{}{"message": err.Error(), "status": false}
 			helper.ResponseJSON(w, http.StatusInternalServerError, response)
 			return
 		}
@@ -79,13 +83,14 @@ func ReadUserProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateUserProduct(w http.ResponseWriter, r *http.Request) {
-	// Mendapatkan parameter id dari query parameter
-	idParam := r.URL.Query().Get("id")
+	// Mendapatkan parameter uid dari bagian path URL
+	params := mux.Vars(r)
+	uid := params["uid"]
 
-	// Konversi idParam menjadi tipe data UUID
-	id, err := uuid.Parse(idParam)
+	// Konversi uidParam menjadi tipe data UUID
+	_, err := uuid.Parse(uid)
 	if err != nil {
-		response := map[string]string{"message": "ID tidak valid"}
+		response := map[string]interface{}{"message": "UID tidak valid"}
 		helper.ResponseJSON(w, http.StatusBadRequest, response)
 		return
 	}
@@ -94,50 +99,60 @@ func UpdateUserProduct(w http.ResponseWriter, r *http.Request) {
 	var inputUserProduct models.UsersProduct
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&inputUserProduct); err != nil {
-		response := map[string]string{"message": err.Error()}
+		response := map[string]interface{}{"message": err.Error(), "status": false}
 		helper.ResponseJSON(w, http.StatusBadRequest, response)
 		return
 	}
 	defer r.Body.Close()
 
-	// Mencari data userProduct berdasarkan ID
+	// Mencari data userProduct berdasarkan UID
 	existingUserProduct := models.UsersProduct{}
-	if err := models.DB.First(&existingUserProduct, "id = ?", id).Error; err != nil {
-		response := map[string]string{"message": "ID tidak ditemukan"}
+	if err := models.DB.First(&existingUserProduct, "id = ?", uid).Error; err != nil {
+		response := map[string]interface{}{"message": "UID tidak ditemukan", "status": false}
 		helper.ResponseJSON(w, http.StatusNotFound, response)
 		return
 	}
 
-	// Update data userProduct berdasarkan ID
-	if err := models.DB.Model(&models.UsersProduct{}).Where("id = ?", id).Updates(&inputUserProduct).Error; err != nil {
-		response := map[string]string{"message": err.Error()}
+	// Update data userProduct berdasarkan UID
+	if err := models.DB.Model(&models.UsersProduct{}).Where("id = ?", uid).Updates(&inputUserProduct).Error; err != nil {
+		response := map[string]interface{}{"message": err.Error(), "status": false}
 		helper.ResponseJSON(w, http.StatusInternalServerError, response)
 		return
 	}
 
-	response := map[string]string{"message": "userProduct berhasil diupdate"}
+	response := map[string]interface{}{"message": "userProduct berhasil diupdate", "status": true}
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
 
-func DeleteUserProduct(w http.ResponseWriter, r *http.Request) {
-	// Mendapatkan parameter id dari query parameter
-	idParam := r.URL.Query().Get("id")
 
-	// Konversi idParam menjadi tipe data UUID
-	id, err := uuid.Parse(idParam)
+func DeleteUserProduct(w http.ResponseWriter, r *http.Request) {
+	// Mendapatkan parameter uid dari path URL
+	vars := mux.Vars(r)
+	uid := vars["uid"]
+
+	// Konversi uidParam menjadi tipe data UUID
+	id, err := uuid.Parse(uid)
 	if err != nil {
-		response := map[string]string{"message": "ID tidak valid"}
+		response := map[string]interface{}{"message": "ID tidak valid", "status": false}
 		helper.ResponseJSON(w, http.StatusBadRequest, response)
 		return
 	}
 
-	// Proses penghapusan UserProduct dari database berdasarkan id
+	// Cek apakah data UsersProduct dengan ID tersebut ada
+	var existingUsersProduct models.UsersProduct
+	if err := models.DB.First(&existingUsersProduct, id).Error; err != nil {
+		response := map[string]interface{}{"message": "Failed, ID tidak ditemukan", "status": false}
+		helper.ResponseJSON(w, http.StatusBadRequest, response)
+		return
+	}
+
+	// Proses penghapusan userUsersProduct dari database berdasarkan id
 	if err := models.DB.Where("id = ?", id).Delete(&models.UsersProduct{}).Error; err != nil {
-		response := map[string]string{"message": errors.Wrap(err, "gagal menghapus UserProduct").Error()}
+		response := map[string]interface{}{"message": errors.Wrap(err, "gagal menghapus User Product").Error(), "status": false}
 		helper.ResponseJSON(w, http.StatusInternalServerError, response)
 		return
 	}
 
-	response := map[string]string{"message": "UserProduct berhasil dihapus"}
+	response := map[string]interface{}{"message": "User Product berhasil dihapus", "status": true}
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
