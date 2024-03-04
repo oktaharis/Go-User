@@ -63,7 +63,7 @@ func GetProduct(w http.ResponseWriter, r *http.Request) {
 		// Jika idParam kosong, artinya kita ingin mengambil seluruh data Product
 		var product []models.Product
 		if err := models.DB.Find(&product).Error; err != nil {
-			response := map[string]string{"message": err.Error()}
+			response := map[string]interface{}{"message": err.Error(), "status": false}
 			helper.ResponseJSON(w, http.StatusInternalServerError, response)
 			return
 		}
