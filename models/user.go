@@ -25,4 +25,5 @@ type User struct {
 	Product         Product   `gorm:"foreignKey:ProductID" json:"product"`
 	OTP             string    `gorm:"varchar(6)" json:"otp"`
 	ExpiredAt       time.Time `gorm:"timestamp" json:"expired_at"`
+	ResetPassword   string    `gorm:"varchar(10)" json:"new_password"`
 }

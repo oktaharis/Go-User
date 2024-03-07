@@ -3,7 +3,6 @@ package usersrolecontroller
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -30,60 +29,75 @@ func CreateUserRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := []models.UsersRole{URoleInput}
+	// Memuat data pengguna dan produk yang terkait
+	if err := models.DB.Preload("User").Preload("Role").First(&URoleInput, "id = ?", URoleInput.ID).Error; err != nil {
+		response := map[string]interface{}{"message": err.Error(), "status": false}
+		helper.ResponseJSON(w, http.StatusInternalServerError, response)
+		return
+	}
+
+	// Mengembalikan respons dengan data yang dimuat
 	response := map[string]interface{}{
-		"message": "success",
-		"status" :  true,
-		"data"	 :  data}
+		"message": "Data berhasil disimpan",
+		"status":  true,
+		"data":    URoleInput,
+	}
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
-func ReaduserRole(w http.ResponseWriter, r *http.Request) {
-	// Mendapatkan parameter id dari query parameter
-	idParam := r.URL.Query().Get("id")
-	// Jika idParam tidak kosong, artinya kita ingin mengambil satu User berdasarkan ID
-	if idParam != "" {
-		// Konversi idParam menjadi tipe data yang sesuai (misalnya, integer)
-		id, err := strconv.Atoi(idParam)
-		if err != nil {
-			response := map[string]interface{}{"message": "ID tidak valid", "status": false}
-			helper.ResponseJSON(w, http.StatusBadRequest, response)
-			return
-		}
+func ReadUserRole(w http.ResponseWriter, r *http.Request) {
+	// Mendapatkan nilai parameter "uid" dari bagian path URL menggunakan Gorilla Mux
+	params := mux.Vars(r)
+	uid, exists := params["uid"]
 
-		// Mendapatkan data userRole berdasarkan ID
-		var userRole models.UsersRole
-		if err := models.DB.Preload("User", func(db *gorm.DB) *gorm.DB {
-			return db.Select("id, name, email")
-		}).Preload("Role").First(&userRole, id).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				response := map[string]interface{}{"message": "User tidak ditemukan", "status": false}
-				helper.ResponseJSON(w, http.StatusNotFound, response)
-				return
-			}
+	// Jika uid tidak ada di URL, tampilkan seluruh data UsersRole
+	if !exists {
+		var userRole []models.UsersRole
+		if err := models.DB.Preload("User").Preload("Role").Find(&userRole).Error; err != nil {
 			response := map[string]interface{}{"message": err.Error(), "status": false}
 			helper.ResponseJSON(w, http.StatusInternalServerError, response)
 			return
 		}
 
-		// Mengembalikan data User dalam format JSON
-		helper.ResponseJSON(w, http.StatusOK, userRole)
-	} else {
-		// Jika idParam kosong, artinya kita ingin mengambil seluruh data Users
-		var userRoles []models.UsersRole
-		if err := models.DB.Preload("User", func(db *gorm.DB) *gorm.DB {
-			return db.Select("id, name, email")
-		}).Preload("Role").Find(&userRoles).Error; err != nil {
-			response := map[string]interface{}{"message": err.Error(), "status": false}
+		// Mengembalikan seluruh data UsersRole dalam format JSON
+		if len(userRole) > 0 {
+			response := map[string]interface{}{"message": "Berhasil menampilkan data user_role", "status": true, "data": userRole}
+			helper.ResponseJSON(w, http.StatusOK, response)
+			return
+		} else {
+			response := map[string]interface{}{"message": "Gagal menampilkan data user_role", "status": false, "data": userRole}
 			helper.ResponseJSON(w, http.StatusInternalServerError, response)
 			return
 		}
-
-		// Mengembalikan seluruh data Users dalam format JSON
-		helper.ResponseJSON(w, http.StatusOK, map[string]interface{}{
-			"status": true,
-			 "data": userRoles})
-
+		
 	}
+
+	// Jika uid ada di URL, artinya kita ingin mengambil satu UserRole berdasarkan ID
+	// Konversi uidParam menjadi tipe data UUID
+	_, err := uuid.Parse(uid)
+	if err != nil {
+		response := map[string]interface{}{"message": "UID tidak valid"}
+		helper.ResponseJSON(w, http.StatusBadRequest, response)
+		return
+	}
+
+	// Mendapatkan data UserRole berdasarkan ID
+	var userRole models.UsersRole
+	if err := models.DB.Preload("User").Preload("Role").Where("id = ?", uid).First(&userRole).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			response := map[string]interface{}{"message": "User tidak ditemukan", "status": false}
+			helper.ResponseJSON(w, http.StatusNotFound, response)
+			return
+		}
+		response := map[string]interface{}{"message": err.Error(), "status": false}
+		helper.ResponseJSON(w, http.StatusInternalServerError, response)
+		return
+	}
+
+	// Mengembalikan data User dalam format JSON
+	response := map[string]interface{}{"message": "berhasil menampilkan data user_product",
+		"status": false,
+		"data":   userRole}
+	helper.ResponseJSON(w, http.StatusInternalServerError, response)
 }
 func UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 	// Mendapatkan parameter uid dari bagian path URL
@@ -111,7 +125,7 @@ func UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 	// Mencari data UserRole berdasarkan UID
 	existingUserRole := models.UsersRole{}
 	if err := models.DB.First(&existingUserRole, "id = ?", uid).Error; err != nil {
-		response := map[string]string{"message": "UID tidak ditemukan"}
+		response := map[string]interface{}{"message": "UID tidak ditemukan", "status": false}
 		helper.ResponseJSON(w, http.StatusNotFound, response)
 		return
 	}
@@ -156,6 +170,6 @@ func DeleteuserRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := map[string]string{"message": "userRole berhasil dihapus"}
+	response := map[string]interface{}{"message": "userRole berhasil dihapus", "status": true}
 	helper.ResponseJSON(w, http.StatusOK, response)
 }

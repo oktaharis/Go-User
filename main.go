@@ -22,10 +22,13 @@ func main() {
 	// Route untuk User
 	r.HandleFunc("/login", authcontroller.Login).Methods("POST")
 	r.HandleFunc("/register", authcontroller.Register).Methods("POST")
-	r.HandleFunc("/read/user", authcontroller.ReadUser).Methods("GET")
+	r.HandleFunc("/read/{id}", authcontroller.ReadUser).Methods("GET")
+	r.HandleFunc("/read", authcontroller.ReadUser).Methods("GET")
 	r.HandleFunc("/logout", authcontroller.Logout).Methods("GET")
 	r.HandleFunc("/delete/{id}", authcontroller.DeleteUser).Methods("DELETE")
-	r.HandleFunc("/users", authcontroller.UpdateUser).Methods("PUT").Queries("id", "{id}")
+	r.HandleFunc("/edit/{id}", authcontroller.UpdateUser).Methods("PUT")
+	r.HandleFunc("/forgot-password", authcontroller.ForgotPassword).Methods("PUT")
+	r.HandleFunc("/reset-password/{id}", authcontroller.ResetPassword).Methods("PUT")
 
 	api := r.PathPrefix("/api").Subrouter()
 	api.HandleFunc("/products", data_product.Data).Methods("GET")
@@ -34,7 +37,8 @@ func main() {
 	// Tambahkan rute untuk Roles
 	role := r.PathPrefix("/roles").Subrouter()
 	role.HandleFunc("/create", rolescontroller.CreateRole).Methods("POST")
-	role.HandleFunc("/data", rolescontroller.GetRole).Methods("GET")
+	role.HandleFunc("/data/{id}", rolescontroller.ReadRole).Methods("GET")
+	role.HandleFunc("/data", rolescontroller.ReadRole).Methods("GET")
 	role.HandleFunc("/edit/{id}", rolescontroller.UpdateRole).Methods("PUT")
 	role.HandleFunc("/delete/{id}", rolescontroller.DeleteRole).Methods("DELETE")
 	// role.Use(middlewares.RoleAuthorizationMiddleware)
@@ -42,7 +46,8 @@ func main() {
 	// Route untuk Product
 	product := r.PathPrefix("/product").Subrouter()
 	product.HandleFunc("/create", productcontroller.CreateProduct).Methods("POST")
-	product.HandleFunc("/data", productcontroller.GetProduct).Methods("GET")
+	product.HandleFunc("/data/{id}", productcontroller.ReadProduct).Methods("GET")
+	product.HandleFunc("/data", productcontroller.ReadProduct).Methods("GET")
 	product.HandleFunc("/edit/{id}", productcontroller.UpdateProduct).Methods("PUT")
 	product.HandleFunc("/delete/{id}", productcontroller.DeleteProduct).Methods("DELETE")
 	// product.Use(middlewares.RoleAuthorizationMiddleware)
@@ -50,6 +55,7 @@ func main() {
 	// rute untuk userProduct
 	userProduct := r.PathPrefix("/userProduct").Subrouter()
 	userProduct.HandleFunc("/create", usersproductcontroller.CreateUserProduct).Methods("POST")
+	userProduct.HandleFunc("/data/{uid}", usersproductcontroller.ReadUserProduct).Methods("GET")
 	userProduct.HandleFunc("/data", usersproductcontroller.ReadUserProduct).Methods("GET")
 	userProduct.HandleFunc("/edit/{uid}", usersproductcontroller.UpdateUserProduct).Methods("PUT")
 	userProduct.HandleFunc("/delete/{uid}", usersproductcontroller.DeleteUserProduct).Methods("DELETE")
@@ -57,7 +63,8 @@ func main() {
 	// rute untuk userProduct
 	userRole := r.PathPrefix("/userRole").Subrouter()
 	userRole.HandleFunc("/create", usersrolecontroller.CreateUserRole).Methods("POST")
-	userRole.HandleFunc("/data", usersrolecontroller.ReaduserRole).Methods("GET")
+	userRole.HandleFunc("/data/{uid}", usersrolecontroller.ReadUserRole).Methods("GET")
+	userRole.HandleFunc("/data", usersrolecontroller.ReadUserRole).Methods("GET")
 	userRole.HandleFunc("/edit/{uid}", usersrolecontroller.UpdateUserRole).Methods("PUT")
 	userRole.HandleFunc("/delete/{uid}", usersrolecontroller.DeleteuserRole).Methods("DELETE")
 

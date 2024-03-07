@@ -36,9 +36,9 @@ func CreateRole(w http.ResponseWriter, r *http.Request) {
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
 
-func GetRole(w http.ResponseWriter, r *http.Request) {
-	// Mendapatkan parameter id dari query parameter
-	idParam := r.URL.Query().Get("id")
+func ReadRole(w http.ResponseWriter, r *http.Request) {
+	// Mendapatkan parameter id dari path parameter
+	idParam := mux.Vars(r)["id"]
 
 	// Jika idParam tidak kosong, artinya kita ingin mengambil satu role berdasarkan ID
 	if idParam != "" {
@@ -53,13 +53,14 @@ func GetRole(w http.ResponseWriter, r *http.Request) {
 		// Mendapatkan data role berdasarkan ID
 		var role models.Role
 		if err := models.DB.First(&role, id).Error; err != nil {
-			response := map[string]interface{}{"message": err.Error(), "status": false}
-			helper.ResponseJSON(w, http.StatusInternalServerError, response)
+			response := map[string]interface{}{"message": "Role tidak ditemukan", "status": false}
+			helper.ResponseJSON(w, http.StatusNotFound, response)
 			return
 		}
 
 		// Mengembalikan data role dalam format JSON
-		helper.ResponseJSON(w, http.StatusOK, role)
+		response := map[string]interface{}{"message": "berhasil menampilkan data role", "status": true, "data": role}
+		helper.ResponseJSON(w, http.StatusOK, response)
 	} else {
 		// Jika idParam kosong, artinya kita ingin mengambil seluruh data roles
 		var roles []models.Role
@@ -68,12 +69,16 @@ func GetRole(w http.ResponseWriter, r *http.Request) {
 			helper.ResponseJSON(w, http.StatusInternalServerError, response)
 			return
 		}
-
 		// Mengembalikan seluruh data roles dalam format JSON
-		helper.ResponseJSON(w, http.StatusOK, roles)
+		if len(roles) > 0 {
+			response := map[string]interface{}{"message": "berhasil menampilkan data role", "status": true, "data": roles}
+			helper.ResponseJSON(w, http.StatusOK, response)
+		}else{
+			response := map[string]interface{}{"message": "gagal menampilkan data role", "status": false, "data": roles}
+			helper.ResponseJSON(w, http.StatusOK, response)
+		}
 	}
 }
-
 
 func UpdateRole(w http.ResponseWriter, r *http.Request) {
 	// Mendapatkan parameter id dari bagian path URL
@@ -118,10 +123,9 @@ func UpdateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := map[string]interface{}{"message": "Role berhasil diupdate", "status": true}
+	response := map[string]interface{}{"message": "Role berhasil diupdate", "status": true, "data": existingRole}
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
-
 
 func DeleteRole(w http.ResponseWriter, r *http.Request) {
 	// Mengambil ID dari path variabel

@@ -22,27 +22,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// func sendOTPByEmail(toEmail, otp string) error {
-//     from := mail.NewEmail("Okta Haris Sutanto", "oktaharis2008@gmail.com")
-//     subject := "Kode OTP untuk Verifikasi"
-//     to := mail.NewEmail("", toEmail) // Menggunakan alamat email tujuan yang diberikan
-//     plainTextContent := fmt.Sprintf("Kode OTP Anda adalah: %s", otp)
-//     htmlContent := fmt.Sprintf("<strong>Kode OTP Anda adalah:</strong> %s", otp)
-//     message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
-//     client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API_KEY"))
-//     response, err := client.Send(message)
-//     if err != nil {
-//         log.Println("Error sending OTP email:", err)
-//         return err
-//     }
-//     if response.StatusCode >= 200 && response.StatusCode < 300 {
-//         log.Println("Email OTP berhasil dikirim:", response.StatusCode)
-//     } else {
-//         log.Println("Email OTP gagal dikirim:", response.StatusCode)
-//     }
-//     return nil
-// }
-
 // Update fungsi Login untuk menggunakan GenerateJWT
 func Login(w http.ResponseWriter, r *http.Request) {
 	var userInput models.User
@@ -67,6 +46,29 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Jika password belum di-hash
+	if user.Password == userInput.Password {
+		// Generate OTP
+		otp := generateOTP()
+
+		// Simpan OTP ke dalam database
+		user.OTP = otp
+		if err := models.DB.Save(&user).Error; err != nil {
+			response := map[string]string{"status": "failed", "message": "Gagal menyimpan OTP"}
+			helper.ResponseJSON(w, http.StatusInternalServerError, response)
+			return
+		}
+
+		// Response ke pengguna bahwa OTP berhasil dibuat
+		response := map[string]interface{}{
+			"status":  "success",
+			"message": "OTP berhasil dibuat",
+		}
+		helper.ResponseJSON(w, http.StatusOK, response)
+		return
+	}
+
+	// Password sudah di-hash, lakukan validasi menggunakan bcrypt
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(userInput.Password)); err != nil {
 		response := map[string]string{"status": "failed", "message": "Email atau password salah"}
 		helper.ResponseJSON(w, http.StatusUnauthorized, response)
@@ -208,38 +210,11 @@ func GenerateJWT(user models.User) (string, error) {
 }
 
 func ReadUser(w http.ResponseWriter, r *http.Request) {
-	// Mendapatkan parameter id dari query parameter
-	idParam := r.URL.Query().Get("id")
-	// Jika idParam tidak kosong, artinya kita ingin mengambil satu User berdasarkan ID
-	if idParam != "" {
-		// Konversi idParam menjadi tipe data yang sesuai (misalnya, integer)
-		id, err := strconv.Atoi(idParam)
-		if err != nil {
-			response := map[string]string{"message": "ID tidak valid"}
-			helper.ResponseJSON(w, http.StatusBadRequest, response)
-			return
-		}
-
-		// Mendapatkan data User berdasarkan ID
-		var user models.User
-		if err := models.DB.Preload("Role").Preload("Product").First(&user, id).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				response := map[string]string{"message": "User tidak ditemukan"}
-				helper.ResponseJSON(w, http.StatusNotFound, response)
-				return
-			}
-			response := map[string]string{"message": err.Error()}
-			helper.ResponseJSON(w, http.StatusInternalServerError, response)
-			return
-		}
-
-		// Mengisi nilai id pada objek product dengan nilai dari product_id
-		user.Product.ID = user.ProductID
-
-		// Mengembalikan data User dalam format JSON
-		helper.ResponseJSON(w, http.StatusOK, user)
-	} else {
-		// Jika idParam kosong, artinya kita ingin mengambil seluruh data Users
+	// Mengambil id dari path parameter
+	idParam := mux.Vars(r)["id"]
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		// Jika tidak ada id yang diberikan dalam URL, maka akan mengembalikan keseluruhan data user
 		var users []models.User
 		if err := models.DB.Preload("Role").Preload("Product").Find(&users).Error; err != nil {
 			response := map[string]string{"message": err.Error()}
@@ -247,18 +222,34 @@ func ReadUser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Mengisi nilai id pada setiap objek product dengan nilai dari product_id
 		for i := range users {
 			users[i].Product.ID = users[i].ProductID
 		}
 
-		// Mengembalikan seluruh data Users dalam format JSON
-		helper.ResponseJSON(w, http.StatusOK, users)
+		response := map[string]interface{}{"message": "Menampilkan Seluruh data", "status": true, "data": users}
+		helper.ResponseJSON(w, http.StatusOK, response)
+		return
 	}
+
+	// Jika id ditemukan dalam URL, maka akan mencari user dengan id tersebut dan mengembalikan data user tersebut
+	var user models.User
+	if err := models.DB.Preload("Role").Preload("Product").Where("id = ?", id).First(&user).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			response := map[string]string{"message": "User tidak ditemukan"}
+			helper.ResponseJSON(w, http.StatusNotFound, response)
+			return
+		}
+		response := map[string]string{"message": err.Error()}
+		helper.ResponseJSON(w, http.StatusInternalServerError, response)
+		return
+	}
+	// user.Product.ID = user.ProductID
+	response := map[string]interface{}{"status": true, "data": user}
+	helper.ResponseJSON(w, http.StatusOK, response)
 }
 
 func Register(w http.ResponseWriter, r *http.Request) {
-	// mengambil inputan json yang di terima dari postman
+	// Mengambil input JSON yang diterima dari Postman
 	var userInput models.User
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&userInput); err != nil {
@@ -268,7 +259,19 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	// hash password menggunakan bcrypt
+	// Periksa apakah pengguna sudah ada di database berdasarkan alamat email
+	var existingUser models.User
+	if err := models.DB.Where("email = ?", userInput.Email).Preload("Role").First(&existingUser).Error; err == nil {
+		// Jika pengguna sudah ada, kirim respons bahwa pengguna sudah dibuat
+		response := map[string]interface{}{
+			"message": "Pengguna sudah dibuat",
+			"status":  false,
+		}
+		helper.ResponseJSON(w, http.StatusOK, response)
+		return
+	}
+
+	// Hash password menggunakan bcrypt sebelum menyimpannya ke database
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userInput.Password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Fatal("Gagal menghash password")
@@ -281,13 +284,23 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		helper.ResponseJSON(w, http.StatusBadRequest, response)
 		return
 	}
-	data := []models.User{userInput}
+
+	// Mengambil data pengguna yang baru dibuat dari database bersama dengan relasi yang sesuai
+	var newUser models.User
+	if err := models.DB.Preload("Role").Preload("Product").First(&newUser, userInput.ID).Error; err != nil {
+		response := map[string]string{"message": "Gagal mengambil data pengguna yang baru dibuat"}
+		helper.ResponseJSON(w, http.StatusInternalServerError, response)
+		return
+	}
+
 	response := map[string]interface{}{
-		"message": "success",
-		"status" :  true,
-		"data"	 :  data}
+		"message": "Pengguna berhasil terdaftar",
+		"status":  true,
+		"data":    newUser,
+	}
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
+
 func Logout(w http.ResponseWriter, r *http.Request) { // perubahan logout menjadi Logout
 	// hapus toke yang ada di cookie
 	http.SetCookie(w, &http.Cookie{
@@ -302,22 +315,37 @@ func Logout(w http.ResponseWriter, r *http.Request) { // perubahan logout menjad
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
-	// Mendapatkan parameter id dari query parameter
-	idParam := r.URL.Query().Get("id")
+	// Mendapatkan parameter id dari bagian path URL
+	params := mux.Vars(r)
+	idParam, ok := params["id"]
+	if !ok {
+		response := map[string]interface{}{"message": "Failed, ID tidak ditemukan dalam path URL", "status": false}
+		helper.ResponseJSON(w, http.StatusBadRequest, response)
+		return
+	}
 
 	// Konversi idParam menjadi tipe data yang sesuai (misalnya, integer)
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		response := map[string]string{"message": "ID tidak valid"}
+		response := map[string]interface{}{"message": "Failed, ID tidak valid", "status": false}
 		helper.ResponseJSON(w, http.StatusBadRequest, response)
 		return
 	}
+
+	// Cek apakah data Product dengan ID tersebut ada
+	var existingUser models.User
+	if err := models.DB.Preload("Role").Preload("Product").First(&existingUser, id).Error; err != nil {
+		response := map[string]interface{}{"message": "Failed, ID tidak ditemukan", "status": false}
+		helper.ResponseJSON(w, http.StatusBadRequest, response)
+		return
+	}
+	
 
 	// Mendapatkan data user yang akan diupdate
 	var userInput models.User
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&userInput); err != nil {
-		response := map[string]string{"message": err.Error()}
+		response := map[string]interface{}{"message": "Gagal menguraikan payload JSON"}
 		helper.ResponseJSON(w, http.StatusBadRequest, response)
 		return
 	}
@@ -327,7 +355,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	if userInput.Password != "" {
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userInput.Password), bcrypt.DefaultCost)
 		if err != nil {
-			response := map[string]string{"message": "Gagal menghash password baru"}
+			response := map[string]interface{}{"message": "Gagal menghash password baru"}
 			helper.ResponseJSON(w, http.StatusInternalServerError, response)
 			return
 		}
@@ -336,14 +364,15 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	// Update data user berdasarkan ID
 	if err := models.DB.Model(&models.User{}).Where("id = ?", id).Updates(&userInput).Error; err != nil {
-		response := map[string]string{"message": err.Error()}
+		response := map[string]interface{}{"message": err.Error()}
 		helper.ResponseJSON(w, http.StatusInternalServerError, response)
 		return
 	}
 
-	response := map[string]string{"message": "User berhasil diupdate"}
+	response := map[string]interface{}{"message": "User berhasil diupdate", "status": true, "data": existingUser}
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
+
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	// Mengambil ID dari path variabel
 	vars := mux.Vars(r)
@@ -352,7 +381,7 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	// Konversi idParam menjadi tipe data yang sesuai (misalnya, integer)
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		response := map[string]string{"message": "ID tidak valid"}
+		response := map[string]interface{}{"message": "ID tidak valid", "status": false}
 		helper.ResponseJSON(w, http.StatusBadRequest, response)
 		return
 	}
@@ -373,5 +402,126 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := map[string]string{"message": "User berhasil dihapus"}
+	helper.ResponseJSON(w, http.StatusOK, response)
+}
+func ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var userInput models.User
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&userInput); err != nil {
+		response := map[string]string{"status": "failed", "message": err.Error()}
+		helper.ResponseJSON(w, http.StatusBadRequest, response)
+		return
+	}
+	defer r.Body.Close()
+
+	var user models.User
+	if err := models.DB.Where("email = ?", userInput.Email).First(&user).Error; err != nil {
+		switch err {
+		case gorm.ErrRecordNotFound:
+			response := map[string]string{"status": "failed", "message": "Email tidak ditemukan. Pastikan email yang Anda masukkan benar."}
+			helper.ResponseJSON(w, http.StatusNotFound, response)
+		default:
+			response := map[string]string{"status": "failed", "message": err.Error()}
+			helper.ResponseJSON(w, http.StatusInternalServerError, response)
+		}
+		return
+	}
+
+	// Generate password baru
+	newPassword := generateNewPassword(user.Name, user.Email)
+
+	// Simpan password baru ke dalam database
+	user.Password = newPassword
+	if err := models.DB.Save(&user).Error; err != nil {
+		response := map[string]string{"status": "failed", "message": "Gagal menyimpan password baru"}
+		helper.ResponseJSON(w, http.StatusInternalServerError, response)
+		return
+	}
+
+	// Kirim email ke pengguna dengan password baru
+	// Implementasi logika pengiriman email Anda di sini
+
+	response := map[string]interface{}{
+		"status":  "success",
+		"message": "Password baru telah berhasil dibuat dan dikirim ke email Anda.",
+	}
+	helper.ResponseJSON(w, http.StatusOK, response)
+}
+
+func generateNewPassword(username, email string) string {
+	// Ambil 3 karakter pertama dari nama pengguna dan email
+	usernamePrefix := username[:3]
+	emailPrefix := email[:3]
+
+	// Gabungkan 3 karakter pertama dari nama pengguna dan email untuk membuat password baru
+	newPassword := usernamePrefix + emailPrefix
+
+	// Jika panjang password kurang dari 6 karakter, tambahkan karakter acak hingga panjangnya menjadi 6
+	for len(newPassword) < 6 {
+		newPassword += string(randomChar())
+	}
+
+	return newPassword
+}
+
+func randomChar() byte {
+	// Karakter yang diperbolehkan untuk digunakan dalam password
+	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+
+	// Mendapatkan indeks karakter acak menggunakan crypto/rand
+	idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(chars))))
+	return chars[idx.Int64()]
+}
+func ResetPassword(w http.ResponseWriter, r *http.Request) {
+	// Dapatkan ID pengguna dari parameter query HTTP
+	params := mux.Vars(r)
+	idParam, ok := params["id"]
+
+	if !ok {
+		response := map[string]interface{}{"message": "Failed, ID tidak ditemukan dalam path URL", "status": false}
+		helper.ResponseJSON(w, http.StatusBadRequest, response)
+		return
+	}
+
+	// Konversi idParam ke tipe data yang sesuai (misalnya, integer)
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		response := map[string]interface{}{"status": "error", "message": "ID tidak valid"}
+		helper.ResponseJSON(w, http.StatusBadRequest, response)
+		return
+	}
+
+	// Dapatkan data pengguna yang akan di-reset berdasarkan ID
+	var user models.User
+	if err := models.DB.Where("id = ?", id).First(&user).Error; err != nil {
+		response := map[string]interface{}{"status": "error", "message": "Pengguna tidak ditemukan"}
+		helper.ResponseJSON(w, http.StatusNotFound, response)
+		return
+	}
+
+	// Parse token reset dan password baru dari body request JSON
+	var resetInput models.User
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&resetInput); err != nil {
+		response := map[string]interface{}{"status": "error", "message": err.Error()}
+		helper.ResponseJSON(w, http.StatusBadRequest, response)
+		return
+	}
+	defer r.Body.Close()
+
+	// Memperbarui data pengguna di database berdasarkan ID dengan password baru
+	if resetInput.ResetPassword != "" {
+		// Jika password baru ada, gunakan password baru tanpa meng-hash
+		user.Password = resetInput.ResetPassword
+	}
+
+	if err := models.DB.Model(&models.User{}).Where("id = ?", id).Updates(&user).Error; err != nil {
+		response := map[string]interface{}{"status": "error", "message": err.Error()}
+		helper.ResponseJSON(w, http.StatusInternalServerError, response)
+		return
+	}
+
+	// Memberikan respons JSON berisi pesan bahwa password telah berhasil di-reset
+	response := map[string]interface{}{"status": "success", "message": "Password berhasil direset"}
 	helper.ResponseJSON(w, http.StatusOK, response)
 }
