@@ -68,8 +68,6 @@ func ReadUserProduct(w http.ResponseWriter, r *http.Request) {
 			helper.ResponseJSON(w, http.StatusInternalServerError, response)
 			return
 		}
-		
-
 	}
 
 	// Jika uid ada di URL, artinya kita ingin mengambil satu UserProduct berdasarkan ID

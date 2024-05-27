@@ -179,20 +179,26 @@ func VerifyOTP(w http.ResponseWriter, r *http.Request) {
 func GenerateJWT(user models.User) (string, error) {
 	// Memuat informasi peran dan nama pengguna dari database
 	var role models.Role
+	var product models.Product
 	if err := models.DB.First(&role, user.RoleID).Error; err != nil {
 		return "", err
 	}
-
+	// Query product data
+	if err := models.DB.First(&product, user.ProductID).Error; err != nil {
+		return "", err
+	}
 	// Set nilai Role dan Name dari pengguna sesuai dengan data dari database
 	userRole := role.Name
+	userProduct := product.Name
 	userName := user.Name
 
 	// Buat token JWT
-	expTime := time.Now().Add(time.Minute * 1)
+	expTime := time.Now().Add(time.Minute * 72)
 	claims := &config.JWTClaim{
-		Email: user.Email,
-		Role:  userRole,
-		Name:  userName,
+		Email:   user.Email,
+		Role:    userRole,
+		Name:    userName,
+		Product: userProduct,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "go-jwt-mux",
 			ExpiresAt: jwt.NewNumericDate(expTime),
@@ -339,7 +345,6 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		helper.ResponseJSON(w, http.StatusBadRequest, response)
 		return
 	}
-	
 
 	// Mendapatkan data user yang akan diupdate
 	var userInput models.User

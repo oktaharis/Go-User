@@ -29,6 +29,7 @@ func main() {
 	r.HandleFunc("/edit/{id}", authcontroller.UpdateUser).Methods("PUT")
 	r.HandleFunc("/forgot-password", authcontroller.ForgotPassword).Methods("PUT")
 	r.HandleFunc("/reset-password/{id}", authcontroller.ResetPassword).Methods("PUT")
+	r.HandleFunc("/profile/{JWT}", middlewares.ReadUserWithJWT).Methods("GET")
 
 	api := r.PathPrefix("/api").Subrouter()
 	api.HandleFunc("/products", data_product.Data).Methods("GET")

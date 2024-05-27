@@ -1,6 +1,6 @@
 module github.com/jeypc/go-jwt-mux
 
-go 1.18
+go 1.21.6
 
 require (
 	github.com/golang-jwt/jwt/v4 v4.4.2
