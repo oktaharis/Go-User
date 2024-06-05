@@ -42,7 +42,7 @@ func main() {
 	role.HandleFunc("/data", rolescontroller.ReadRole).Methods("GET")
 	role.HandleFunc("/edit/{id}", rolescontroller.UpdateRole).Methods("PUT")
 	role.HandleFunc("/delete/{id}", rolescontroller.DeleteRole).Methods("DELETE")
-	// role.Use(middlewares.RoleAuthorizationMiddleware)
+	role.Use(middlewares.RoleAuthorizationMiddleware)
 
 	// Route untuk Product
 	product := r.PathPrefix("/product").Subrouter()
@@ -51,7 +51,7 @@ func main() {
 	product.HandleFunc("/data", productcontroller.ReadProduct).Methods("GET")
 	product.HandleFunc("/edit/{id}", productcontroller.UpdateProduct).Methods("PUT")
 	product.HandleFunc("/delete/{id}", productcontroller.DeleteProduct).Methods("DELETE")
-	// product.Use(middlewares.RoleAuthorizationMiddleware)
+	product.Use(middlewares.RoleAuthorizationMiddleware)
 
 	// rute untuk userProduct
 	userProduct := r.PathPrefix("/userProduct").Subrouter()

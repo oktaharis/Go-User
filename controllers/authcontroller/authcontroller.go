@@ -2,6 +2,7 @@ package authcontroller
 
 import (
 	"crypto/rand"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -109,6 +110,13 @@ func generateOTP() string {
 	return string(otp)
 }
 
+// Fungsi untuk menambahkan token ke database
+func addTokenToDatabase(name, token string, db *sql.DB) error {
+	query := fmt.Sprintf("INSERT INTO access_service (name, token) VALUES ('%s', '%s')", name, token)
+	_, err := db.Exec(query)
+	return err
+}
+
 func VerifyOTP(w http.ResponseWriter, r *http.Request) {
 	var inputOTP struct {
 		OTP string `json:"otp"`
@@ -152,6 +160,21 @@ func VerifyOTP(w http.ResponseWriter, r *http.Request) {
 	token, err := GenerateJWT(user)
 	if err != nil {
 		response := map[string]string{"status": "failed", "message": err.Error()}
+		helper.ResponseJSON(w, http.StatusInternalServerError, response)
+		return
+	}
+	// Simpan name dan token ke dalam tabel access_service
+	dbInstance, err := models.DB.DB()
+	// fmt.Println("ini adalah dbinstance",dbInstance)
+	if err != nil {
+		response := map[string]string{"status": "failed", "message": "Gagal mendapatkan koneksi database"}
+		helper.ResponseJSON(w, http.StatusInternalServerError, response)
+		return
+	}
+
+	if err := addTokenToDatabase(user.Name, token, dbInstance); err != nil {
+		fmt.Println(user.Name, token)
+		response := map[string]string{"status": "failed", "message": "Gagal menyimpan name dan token ke database"}
 		helper.ResponseJSON(w, http.StatusInternalServerError, response)
 		return
 	}
